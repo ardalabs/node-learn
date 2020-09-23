@@ -1,4 +1,5 @@
 import { ISiswa, MSiswa } from '../model/siswa';
+import { QueryProxy } from '../util/queryProxy';
 interface ISiswaWorker {
   createSiswa(data: ISiswa): Promise<any>
   getSiswaByNIS(nis: string): Promise<any>
@@ -7,8 +8,9 @@ interface ISiswaWorker {
   showAllSiswa(): Promise<any>
 }
 export class SiswaWorker implements ISiswaWorker {
+  _qp?:QueryProxy
   constructor() {
-
+    this._qp = new QueryProxy(MSiswa);
   }
 
   removeSiswaByNIS(nis: string): Promise<any> {
@@ -34,7 +36,10 @@ export class SiswaWorker implements ISiswaWorker {
   }
   getSiswaByNIS(nis: string): Promise<any> {
     return new Promise((resolve, reject) => {
-      MSiswa.findOne({ nis: Number(nis) }).then((result) => {
+      const data = { nis: Number(nis) };
+      const params = { select: 'name nis' }
+      
+      this._qp?.findOne(data, params).then((result) => {
         resolve(result);
       }).catch((err: Error) => {
         reject(err);
