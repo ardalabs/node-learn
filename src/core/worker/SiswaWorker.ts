@@ -1,5 +1,7 @@
 import { ISiswa, MSiswa } from '../model/siswa';
 import { QueryProxy } from '../util/queryProxy';
+import { CacheManager } from '../util/cacheManager';
+const KEY_SISWA = 'KEY_SISWA';
 interface ISiswaWorker {
   createSiswa(data: ISiswa): Promise<any>
   getSiswaByNIS(nis: string): Promise<any>
@@ -8,9 +10,11 @@ interface ISiswaWorker {
   showAllSiswa(): Promise<any>
 }
 export class SiswaWorker implements ISiswaWorker {
-  _qp?:QueryProxy
+  _qp?: QueryProxy
+  cache?: CacheManager
   constructor() {
     this._qp = new QueryProxy(MSiswa);
+    this.cache = new CacheManager();
   }
 
   removeSiswaByNIS(nis: string): Promise<any> {
@@ -46,19 +50,31 @@ export class SiswaWorker implements ISiswaWorker {
       })
     })
   }
+  
   showAllSiswa(): Promise<any> {
     return new Promise((resolve, reject) => {
-      MSiswa.find().then((result) => {
-        resolve(result);
-      }).catch((err: Error) => {
-        reject(err);
+      this.cache?.getCache(KEY_SISWA, (err, cacheResult) => {
+        if (err || !cacheResult) {
+          MSiswa.find().then((result) => {
+            this.cache?.setCache(KEY_SISWA, result);
+            resolve(result);
+          }).catch((err: Error) => {
+            this.cache?.deleteCache(KEY_SISWA);
+            reject(err);
+          })
+        } else { 
+          resolve(JSON.parse(cacheResult))
+        }
+
       })
+      
     })
   }
 
   createSiswa(data: ISiswa): Promise<any> {
     return new Promise((resolve, reject) => {
       MSiswa.create(data).then((result) => {
+        this.cache?.deleteCache(KEY_SISWA);
         resolve(result);
       }).catch((err: Error) => {
         reject(err);
